@@ -648,6 +648,7 @@
             </select>
             <button id="play-solo">🎮 Solo Race</button>
             <button id="create-room">🌐 Create Multiplayer Room</button>
+            <p style="font-size: 12px; color: #0a0; margin: 10px 0;">To join a room, scan the QR code or use the link shared by the host</p>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <input type="text" id="room-code" placeholder="ROOM CODE" maxlength="6" style="width: 150px; text-align: center; text-transform: uppercase;">
                 <button id="join-room">Join Room</button>
@@ -664,8 +665,8 @@
                     <div class="room-code" id="display-room-code">----</div>
                 </div>
                 <div id="qrcode"></div>
-                <button class="copy-btn" id="copy-link-btn">📋 Copy Link</button>
-                <p class="share-instruction">Share the room code or scan the QR code to invite players!</p>
+                <button class="copy-btn" id="copy-link-btn">📋 Copy Join Link</button>
+                <p class="share-instruction">Players MUST use the QR code or copied link to join!<br>The room code alone won't work.</p>
                 <p class="connection-status" id="connection-status">Initializing...</p>
             </div>
             <p style="margin-bottom: 10px; font-weight: bold;">Players in Room:</p>
@@ -777,9 +778,10 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        // Check URL for room code
+        // Check URL for room code and host peer ID
         const urlParams = new URLSearchParams(window.location.search);
         const urlRoomCode = urlParams.get('room');
+        const urlHostPeerId = urlParams.get('host');
         if (urlRoomCode) {
             document.getElementById('room-code').value = urlRoomCode.toUpperCase();
         }
@@ -797,12 +799,13 @@
             return code;
         }
 
-        function generateQRCode(roomCode) {
+        function generateQRCode(roomCode, hostPeerId) {
             const qrcodeEl = document.getElementById('qrcode');
             qrcodeEl.innerHTML = '';
             
             const baseUrl = window.location.origin + window.location.pathname;
-            const fullUrl = `${baseUrl}?room=${roomCode}`;
+            // Include BOTH room code (for display) and host peer ID (for connection)
+            const fullUrl = `${baseUrl}?room=${roomCode}&host=${hostPeerId}`;
             
             QRCode.toCanvas(fullUrl, {
                 width: 200,
@@ -823,7 +826,7 @@
 
         function copyRoomLink() {
             const baseUrl = window.location.origin + window.location.pathname;
-            const fullUrl = `${baseUrl}?room=${roomCode}`;
+            const fullUrl = `${baseUrl}?room=${roomCode}&host=${myPeerId}`;
             
             navigator.clipboard.writeText(fullUrl).then(() => {
                 const btn = document.getElementById('copy-link-btn');
@@ -1396,11 +1399,8 @@
                 showScreen('waiting-room');
                 document.getElementById('display-room-code').textContent = roomCode;
                 updateWaitingRoom();
-                generateQRCode(roomCode);
+                generateQRCode(roomCode, myPeerId); // Pass peer ID
                 showStatus('');
-                
-                // Store room code mapping in sessionStorage
-                sessionStorage.setItem(`room_${roomCode}`, myPeerId);
                 
                 console.log('Room created:', roomCode, 'Host Peer ID:', myPeerId);
             } catch (err) {
@@ -1420,17 +1420,15 @@
                 showStatus('Connecting to room...');
                 await initPeer();
                 
-                // Try to get host peer ID from sessionStorage
-                let hostPeerId = sessionStorage.getItem(`room_${code}`);
+                // Get host peer ID from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                let hostPeerId = urlParams.get('host');
                 
                 if (!hostPeerId) {
-                    // For demo/testing: if code looks like a peer ID, use it directly
-                    if (code.length > 10) {
-                        hostPeerId = code;
-                    } else {
-                        showStatus('Room not found. Ask host to share their connection link!', true);
-                        return;
-                    }
+                    // If no host in URL, show instructions
+                    showStatus('Please use the link or QR code shared by the host to join!', true);
+                    console.error('No host peer ID in URL. Need ?room=CODE&host=PEERID');
+                    return;
                 }
                 
                 isHost = false;
@@ -1439,11 +1437,16 @@
                 players.set(localPlayerId, localPlayer);
                 
                 // Connect to host
-                console.log('Attempting to connect to host:', hostPeerId);
+                console.log('Connecting to host peer ID:', hostPeerId);
                 const conn = peer.connect(hostPeerId, {
                     reliable: true,
                     serialization: 'json'
                 });
+                
+                if (!conn) {
+                    showStatus('Failed to create connection', true);
+                    return;
+                }
                 
                 setupConnection(conn);
                 
@@ -1455,8 +1458,8 @@
                 // Add timeout for connection
                 setTimeout(() => {
                     if (!conn.open) {
-                        showStatus('Connection timeout. Check room code and try again.', true);
-                        console.error('Connection timeout');
+                        showStatus('Connection timeout. Make sure the host is online!', true);
+                        console.error('Connection timeout to host:', hostPeerId);
                     }
                 }, 10000);
                 
