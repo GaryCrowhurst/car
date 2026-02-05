@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pit Stop Challenge - Multiplayer</title>
     <script src="https://unpkg.com/peerjs@1.5.0/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -94,6 +95,10 @@
             color: #000;
             box-shadow: 0 0 30px rgba(0,255,0,0.8);
         }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         input::placeholder {
             color: #0a0;
         }
@@ -115,16 +120,47 @@
             border-radius: 5px;
             color: #0f0;
         }
+        .room-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0,255,0,0.05);
+            border: 2px solid #0f0;
+            border-radius: 15px;
+        }
         .room-code {
             font-size: 3em;
             letter-spacing: 15px;
-            padding: 20px;
+            padding: 15px 30px;
             background: rgba(0,255,0,0.2);
             border: 3px solid #0f0;
             border-radius: 10px;
-            margin: 20px 0;
             color: #0f0;
             text-shadow: 0 0 20px #0f0;
+        }
+        #qrcode {
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        #qrcode canvas {
+            display: block;
+        }
+        .share-instruction {
+            font-size: 14px;
+            color: #0a0;
+            text-align: center;
+            max-width: 300px;
+            line-height: 1.4;
+        }
+        .copy-btn {
+            min-width: 150px;
+            padding: 10px 20px;
+            font-size: 14px;
         }
         
         /* Race HUD */
@@ -521,6 +557,10 @@
             font-size: 14px;
             margin: 10px 0;
             text-align: center;
+            min-height: 20px;
+        }
+        .status-message.error {
+            color: #f00;
         }
 
         /* Boost notification */
@@ -545,6 +585,12 @@
             0% { transform: translate(-50%, -50%) scale(0); }
             50% { transform: translate(-50%, -50%) scale(1.2); }
             100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .connection-status {
+            font-size: 12px;
+            color: #0a0;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -601,10 +647,10 @@
                 <option value="hard">Hard</option>
             </select>
             <button id="play-solo">🎮 Solo Race</button>
-            <button id="create-room">🌐 Create Room</button>
+            <button id="create-room">🌐 Create Multiplayer Room</button>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="text" id="room-code" placeholder="ROOM CODE" maxlength="4" style="width: 150px; text-align: center;">
-                <button id="join-room">Join</button>
+                <input type="text" id="room-code" placeholder="ROOM CODE" maxlength="6" style="width: 150px; text-align: center; text-transform: uppercase;">
+                <button id="join-room">Join Room</button>
             </div>
             <div class="status-message" id="status-message"></div>
         </div>
@@ -612,11 +658,20 @@
         <!-- Waiting Room -->
         <div id="waiting-room" class="screen">
             <h1>WAITING ROOM</h1>
-            <div class="room-code" id="display-room-code"></div>
-            <p style="margin-bottom: 10px;">Players:</p>
+            <div class="room-info">
+                <div>
+                    <p style="text-align: center; margin-bottom: 10px; font-size: 14px;">Room Code:</p>
+                    <div class="room-code" id="display-room-code">----</div>
+                </div>
+                <div id="qrcode"></div>
+                <button class="copy-btn" id="copy-link-btn">📋 Copy Link</button>
+                <p class="share-instruction">Share the room code or scan the QR code to invite players!</p>
+                <p class="connection-status" id="connection-status">Initializing...</p>
+            </div>
+            <p style="margin-bottom: 10px; font-weight: bold;">Players in Room:</p>
             <ul id="players-list"></ul>
             <button id="start-race" style="display: none;">🏁 START RACE</button>
-            <button id="leave-room">← Leave</button>
+            <button id="leave-room">← Leave Room</button>
         </div>
         
         <!-- Countdown Screen -->
@@ -629,7 +684,7 @@
             <h1>🏆 RACE COMPLETE</h1>
             <div id="results-content"></div>
             <button id="race-again">🔄 Race Again</button>
-            <button id="back-to-menu">← Menu</button>
+            <button id="back-to-menu">← Back to Menu</button>
         </div>
         
         <!-- Question Popup -->
@@ -665,42 +720,32 @@
         // ============================================
         // GAME CONSTANTS
         // ============================================
-        const GAME_WIDTH = 6000;   // 100% BIGGER!
-        const GAME_HEIGHT = 4800;  // 100% BIGGER!
+        const GAME_WIDTH = 6000;
+        const GAME_HEIGHT = 4800;
         const CAR_LENGTH = 40;
         const CAR_WIDTH = 20;
         const TRACK_WIDTH = 150;
-        const MAX_SPEED = 4.5;     
+        const MAX_SPEED = 4.5;
         const ACCELERATION = 0.08;
         const BRAKE_POWER = 0.25;
         const FRICTION = 0.05;
         const TURN_SPEED = 0.065;
         const DRIFT = 0.94;
-        const BOOST_MULT = 2.5;    
+        const BOOST_MULT = 2.5;
         const SLOW_MULT = 0.5;
-        const BOOST_TIME = 450;    
+        const BOOST_TIME = 450;
         const SLOW_TIME = 180;
         const QUESTION_TIME = 1200;
         const CAMERA_SMOOTHING = 0.15;
         const ZOOM = 1.4;
-        // Vertical screen offset (pixels) to push the car toward the bottom
         const CAMERA_Y_OFFSET = 140;
-        // Forward offset from car center to simulate driver's seat view
-        const CAMERA_FORWARD = 120;
         const COLLISION_RADIUS = 35;
         const CRASH_SPEED_LOSS = 0.5;
         const CRASH_STUN_TIME = 40;
 
-        // Player colors
         const PLAYER_COLORS = [
-            '#00ff00',  // Green
-            '#00ffff',  // Cyan
-            '#ff00ff',  // Magenta
-            '#ffff00',  // Yellow
-            '#ff6600',  // Orange
-            '#ff0066',  // Pink
-            '#6600ff',  // Purple
-            '#00ff66',  // Spring green
+            '#00ff00', '#00ffff', '#ff00ff', '#ffff00',
+            '#ff6600', '#ff0066', '#6600ff', '#00ff66',
         ];
 
         // ============================================
@@ -732,127 +777,106 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
+        // Check URL for room code
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRoomCode = urlParams.get('room');
+        if (urlRoomCode) {
+            document.getElementById('room-code').value = urlRoomCode.toUpperCase();
+        }
+
         // ============================================
-        // MASSIVE TRACK - 100% BIGGER
+        // ROOM CODE FUNCTIONS
+        // ============================================
+        function generateRoomCode() {
+            // Generate a 6-character alphanumeric code
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar looking chars
+            let code = '';
+            for (let i = 0; i < 6; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        function generateQRCode(roomCode) {
+            const qrcodeEl = document.getElementById('qrcode');
+            qrcodeEl.innerHTML = '';
+            
+            const baseUrl = window.location.origin + window.location.pathname;
+            const fullUrl = `${baseUrl}?room=${roomCode}`;
+            
+            QRCode.toCanvas(fullUrl, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#ffffff'
+                }
+            }, function (err, canvas) {
+                if (err) {
+                    console.error('QR Code generation failed:', err);
+                    qrcodeEl.innerHTML = '<p style="color: #f00;">QR Code failed to generate</p>';
+                } else {
+                    qrcodeEl.appendChild(canvas);
+                }
+            });
+        }
+
+        function copyRoomLink() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            const fullUrl = `${baseUrl}?room=${roomCode}`;
+            
+            navigator.clipboard.writeText(fullUrl).then(() => {
+                const btn = document.getElementById('copy-link-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Copy link: ' + fullUrl);
+            });
+        }
+
+        // ============================================
+        // TRACK GENERATION
         // ============================================
         function createTrack() {
             const cx = GAME_WIDTH / 2;
             const cy = GAME_HEIGHT / 2;
             
-            // Create an absolutely MASSIVE professional circuit
             const trackSegments = [
-                // MAIN STRAIGHT - Ultra long (25 segments!)
-                {x: cx - 1400, y: cy + 1000},
-                {x: cx - 1200, y: cy + 1000},
-                {x: cx - 1000, y: cy + 1000},
-                {x: cx - 800, y: cy + 1000},
-                {x: cx - 600, y: cy + 1000},
-                {x: cx - 400, y: cy + 1000},
-                {x: cx - 200, y: cy + 1000},
-                {x: cx, y: cy + 1000},
-                {x: cx + 200, y: cy + 1000},
-                {x: cx + 400, y: cy + 1000},
-                {x: cx + 600, y: cy + 1000},
-                {x: cx + 800, y: cy + 1000},
-                {x: cx + 1000, y: cy + 1000},
-                
-                // TURN 1 - Very long sweeping right
-                {x: cx + 1200, y: cy + 960},
-                {x: cx + 1400, y: cy + 880},
-                {x: cx + 1560, y: cy + 760},
-                {x: cx + 1680, y: cy + 600},
-                {x: cx + 1760, y: cy + 400},
-                {x: cx + 1800, y: cy + 200},
-                {x: cx + 1800, y: cy},
-                {x: cx + 1780, y: cy - 200},
-                
-                // TURN 2 - Medium speed right
-                {x: cx + 1720, y: cy - 400},
-                {x: cx + 1620, y: cy - 560},
-                {x: cx + 1480, y: cy - 700},
-                {x: cx + 1300, y: cy - 800},
-                
-                // BACK STRAIGHT - Another long section
-                {x: cx + 1100, y: cy - 840},
-                {x: cx + 900, y: cy - 860},
-                {x: cx + 700, y: cy - 880},
-                {x: cx + 500, y: cy - 890},
-                {x: cx + 300, y: cy - 900},
-                {x: cx + 100, y: cy - 900},
-                {x: cx - 100, y: cy - 900},
-                {x: cx - 300, y: cy - 900},
-                {x: cx - 500, y: cy - 900},
-                
-                // TURN 3 - Technical chicane
-                {x: cx - 660, y: cy - 880},  
-                {x: cx - 800, y: cy - 820},
-                {x: cx - 900, y: cy - 720},  
-                {x: cx - 960, y: cy - 600},
-                {x: cx - 1000, y: cy - 460},  
-                {x: cx - 980, y: cy - 320},
-                
-                // TURN 4 - Long left sweeper
-                {x: cx - 940, y: cy - 160},
-                {x: cx - 880, y: cy},
-                {x: cx - 800, y: cy + 140},
-                {x: cx - 700, y: cy + 260},
-                {x: cx - 580, y: cy + 360},
-                
-                // STADIUM COMPLEX - Tight technical section
-                {x: cx - 440, y: cy + 440},
-                {x: cx - 300, y: cy + 480},
-                {x: cx - 160, y: cy + 500},
-                {x: cx - 20, y: cy + 480},
-                {x: cx + 100, y: cy + 420},
-                {x: cx + 200, y: cy + 340},
-                {x: cx + 280, y: cy + 240},
-                {x: cx + 320, y: cy + 120},
-                {x: cx + 330, y: cy},
-                {x: cx + 320, y: cy - 120},
-                {x: cx + 280, y: cy - 240},
-                {x: cx + 200, y: cy - 340},
-                {x: cx + 100, y: cy - 420},
-                {x: cx, y: cy - 480},
-                {x: cx - 120, y: cy - 520},
-                
-                // EXIT SECTION
-                {x: cx - 260, y: cy - 540},
-                {x: cx - 400, y: cy - 520},
-                {x: cx - 540, y: cy - 460},
-                {x: cx - 660, y: cy - 360},
-                {x: cx - 760, y: cy - 220},
-                {x: cx - 840, y: cy - 60},
-                {x: cx - 900, y: cy + 100},
-                
-                // FINAL COMPLEX - Giant hairpin back to main straight
-                {x: cx - 960, y: cy + 280},
-                {x: cx - 1040, y: cy + 460},
-                {x: cx - 1140, y: cy + 620},
-                {x: cx - 1260, y: cy + 760},
-                {x: cx - 1400, y: cy + 860},
-                {x: cx - 1560, y: cy + 940},
-                {x: cx - 1720, y: cy + 980},
-                {x: cx - 1880, y: cy + 1000},
-                {x: cx - 2000, y: cy + 980},
-                {x: cx - 2100, y: cy + 920},
-                {x: cx - 2160, y: cy + 820},
-                {x: cx - 2200, y: cy + 700},
-                {x: cx - 2200, y: cy + 560},
-                {x: cx - 2160, y: cy + 420},
-                {x: cx - 2080, y: cy + 300},
-                {x: cx - 1960, y: cy + 220},
-                {x: cx - 1820, y: cy + 180},
-                {x: cx - 1680, y: cy + 180},
-                {x: cx - 1540, y: cy + 220},
-                {x: cx - 1420, y: cy + 300},
-                {x: cx - 1320, y: cy + 420},
-                {x: cx - 1260, y: cy + 560},
-                {x: cx - 1240, y: cy + 700},
-                {x: cx - 1260, y: cy + 840},
-                {x: cx - 1320, y: cy + 960},
-                
-                // Connect back
-                {x: cx - 1400, y: cy + 1000}
+                {x: cx - 1400, y: cy + 1000}, {x: cx - 1200, y: cy + 1000}, {x: cx - 1000, y: cy + 1000},
+                {x: cx - 800, y: cy + 1000}, {x: cx - 600, y: cy + 1000}, {x: cx - 400, y: cy + 1000},
+                {x: cx - 200, y: cy + 1000}, {x: cx, y: cy + 1000}, {x: cx + 200, y: cy + 1000},
+                {x: cx + 400, y: cy + 1000}, {x: cx + 600, y: cy + 1000}, {x: cx + 800, y: cy + 1000},
+                {x: cx + 1000, y: cy + 1000}, {x: cx + 1200, y: cy + 960}, {x: cx + 1400, y: cy + 880},
+                {x: cx + 1560, y: cy + 760}, {x: cx + 1680, y: cy + 600}, {x: cx + 1760, y: cy + 400},
+                {x: cx + 1800, y: cy + 200}, {x: cx + 1800, y: cy}, {x: cx + 1780, y: cy - 200},
+                {x: cx + 1720, y: cy - 400}, {x: cx + 1620, y: cy - 560}, {x: cx + 1480, y: cy - 700},
+                {x: cx + 1300, y: cy - 800}, {x: cx + 1100, y: cy - 840}, {x: cx + 900, y: cy - 860},
+                {x: cx + 700, y: cy - 880}, {x: cx + 500, y: cy - 890}, {x: cx + 300, y: cy - 900},
+                {x: cx + 100, y: cy - 900}, {x: cx - 100, y: cy - 900}, {x: cx - 300, y: cy - 900},
+                {x: cx - 500, y: cy - 900}, {x: cx - 660, y: cy - 880}, {x: cx - 800, y: cy - 820},
+                {x: cx - 900, y: cy - 720}, {x: cx - 960, y: cy - 600}, {x: cx - 1000, y: cy - 460},
+                {x: cx - 980, y: cy - 320}, {x: cx - 940, y: cy - 160}, {x: cx - 880, y: cy},
+                {x: cx - 800, y: cy + 140}, {x: cx - 700, y: cy + 260}, {x: cx - 580, y: cy + 360},
+                {x: cx - 440, y: cy + 440}, {x: cx - 300, y: cy + 480}, {x: cx - 160, y: cy + 500},
+                {x: cx - 20, y: cy + 480}, {x: cx + 100, y: cy + 420}, {x: cx + 200, y: cy + 340},
+                {x: cx + 280, y: cy + 240}, {x: cx + 320, y: cy + 120}, {x: cx + 330, y: cy},
+                {x: cx + 320, y: cy - 120}, {x: cx + 280, y: cy - 240}, {x: cx + 200, y: cy - 340},
+                {x: cx + 100, y: cy - 420}, {x: cx, y: cy - 480}, {x: cx - 120, y: cy - 520},
+                {x: cx - 260, y: cy - 540}, {x: cx - 400, y: cy - 520}, {x: cx - 540, y: cy - 460},
+                {x: cx - 660, y: cy - 360}, {x: cx - 760, y: cy - 220}, {x: cx - 840, y: cy - 60},
+                {x: cx - 900, y: cy + 100}, {x: cx - 960, y: cy + 280}, {x: cx - 1040, y: cy + 460},
+                {x: cx - 1140, y: cy + 620}, {x: cx - 1260, y: cy + 760}, {x: cx - 1400, y: cy + 860},
+                {x: cx - 1560, y: cy + 940}, {x: cx - 1720, y: cy + 980}, {x: cx - 1880, y: cy + 1000},
+                {x: cx - 2000, y: cy + 980}, {x: cx - 2100, y: cy + 920}, {x: cx - 2160, y: cy + 820},
+                {x: cx - 2200, y: cy + 700}, {x: cx - 2200, y: cy + 560}, {x: cx - 2160, y: cy + 420},
+                {x: cx - 2080, y: cy + 300}, {x: cx - 1960, y: cy + 220}, {x: cx - 1820, y: cy + 180},
+                {x: cx - 1680, y: cy + 180}, {x: cx - 1540, y: cy + 220}, {x: cx - 1420, y: cy + 300},
+                {x: cx - 1320, y: cy + 420}, {x: cx - 1260, y: cy + 560}, {x: cx - 1240, y: cy + 700},
+                {x: cx - 1260, y: cy + 840}, {x: cx - 1320, y: cy + 960}, {x: cx - 1400, y: cy + 1000}
             ];
 
             return trackSegments;
@@ -877,12 +901,13 @@
         let questionsPlaced = false;
         let cameraX = 0;
         let cameraY = 0;
-        
-        // Input state
         let cameraAngle = 0;
         let keys = {left: false, right: false, up: false, down: false};
-        // Crossing points on the track (computed once)
         let trackCrossings = [];
+        let touchLeft = false;
+        let touchRight = false;
+        let touchAccel = false;
+        let touchBrake = false;
 
         function detectTrackCrossings() {
             trackCrossings = [];
@@ -894,7 +919,7 @@
                 const t = ((b1.x - a1.x) * dy2 - (b1.y - a1.y) * dx2) / denom;
                 const u = ((b1.x - a1.x) * dy1 - (b1.y - a1.y) * dx1) / denom;
                 if (t > 0 && t < 1 && u > 0 && u < 1) {
-                    return {x: a1.x + dx1 * t, y: a1.y + dy1 * t, t, u};
+                    return {x: a1.x + dx1 * t, y: a1.y + dy1 * t};
                 }
                 return null;
             }
@@ -903,20 +928,17 @@
                 const a1 = track[i];
                 const a2 = track[(i + 1) % track.length];
                 for (let j = i + 2; j < track.length; j++) {
-                    // skip adjacent segments (and the closing segment)
                     if (j === i || j === (i + 1) % track.length || (i === 0 && j === track.length - 1)) continue;
                     const b1 = track[j];
                     const b2 = track[(j + 1) % track.length];
                     const p = segIntersect(a1, a2, b1, b2);
                     if (p) {
-                        // angle aligned to first segment (a1->a2)
                         const angle = Math.atan2(a2.y - a1.y, a2.x - a1.x);
                         trackCrossings.push({x: p.x, y: p.y, angle});
                     }
                 }
             }
 
-            // remove near-duplicates
             const dedup = [];
             trackCrossings.forEach(c => {
                 if (!dedup.some(d => Math.hypot(d.x - c.x, d.y - c.y) < 12)) dedup.push(c);
@@ -925,10 +947,6 @@
         }
 
         detectTrackCrossings();
-        let touchLeft = false;
-        let touchRight = false;
-        let touchAccel = false;
-        let touchBrake = false;
 
         // ============================================
         // PLAYER CLASS
@@ -1021,7 +1039,6 @@
                     
                     if (angleDiff < Math.PI / 2) {
                         if (this.lap === 0) {
-                            // LAP 1 COMPLETE - NOW spawn questions!
                             this.lap++;
                             this.questionsThisLap = 0;
                             this.checkpoint = 0;
@@ -1134,26 +1151,49 @@
         }
 
         // ============================================
-        // MULTIPLAYER FUNCTIONS
+        // PEER JS / WebRTC CONNECTION
         // ============================================
         function initPeer() {
             return new Promise((resolve, reject) => {
-                peer = new Peer();
+                // Use PeerJS cloud server
+                peer = new Peer({
+                    config: {
+                        iceServers: [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' }
+                        ]
+                    }
+                });
                 
                 peer.on('open', (id) => {
                     myPeerId = id;
                     localPlayerId = id;
+                    console.log('Peer connected with ID:', id);
+                    updateConnectionStatus('Connected to server');
                     resolve(id);
                 });
 
                 peer.on('error', (err) => {
                     console.error('Peer error:', err);
-                    showStatus('Connection error. Please refresh.', true);
+                    updateConnectionStatus('Connection error: ' + err.type, true);
+                    showStatus('Connection error. Please try again.', true);
                     reject(err);
                 });
 
                 peer.on('connection', (conn) => {
+                    console.log('Incoming connection from:', conn.peer);
                     setupConnection(conn);
+                });
+
+                peer.on('disconnected', () => {
+                    console.log('Disconnected from server');
+                    updateConnectionStatus('Disconnected - reconnecting...', true);
+                    // Try to reconnect
+                    setTimeout(() => {
+                        if (peer && !peer.destroyed) {
+                            peer.reconnect();
+                        }
+                    }, 1000);
                 });
             });
         }
@@ -1162,7 +1202,11 @@
             connections.set(conn.peer, conn);
             
             conn.on('open', () => {
+                console.log('Connection opened with:', conn.peer);
+                updateConnectionStatus('Connected to ' + (isHost ? 'player' : 'host'));
+                
                 if (isHost) {
+                    // Host sends full game state to new player
                     const playersData = Array.from(players.values()).map(p => p.toData());
                     conn.send({
                         type: 'init',
@@ -1170,36 +1214,104 @@
                         questions: questions,
                         questionsPlaced: questionsPlaced,
                         roomCode: roomCode,
+                        hostPeerId: myPeerId,
                         nextColorIndex: playerColorIndex
                     });
+                    console.log('Sent init data to new player');
                 } else {
+                    // Client sends join request
                     const localPlayer = players.get(localPlayerId);
                     conn.send({
                         type: 'join-request',
                         player: localPlayer.toData()
                     });
+                    console.log('Sent join request to host');
                 }
             });
 
             conn.on('data', (data) => {
-                handleMessage(data);
+                handleMessage(data, conn);
             });
 
             conn.on('close', () => {
+                console.log('Connection closed with:', conn.peer);
                 connections.delete(conn.peer);
                 players.delete(conn.peer);
                 updateWaitingRoom();
                 updateScoreboard();
+                updateConnectionStatus('Player disconnected');
+            });
+
+            conn.on('error', (err) => {
+                console.error('Connection error with', conn.peer, ':', err);
+                connections.delete(conn.peer);
+                players.delete(conn.peer);
+                updateWaitingRoom();
             });
         }
 
-        function handleMessage(data) {
+        function handleMessage(data, conn) {
             switch (data.type) {
                 case 'init':
+                    console.log('Received init data');
                     roomCode = data.roomCode;
                     questions = data.questions;
                     questionsPlaced = data.questionsPlaced;
                     playerColorIndex = data.nextColorIndex;
+                    
+                    // Update local player's color
+                    const localPlayer = players.get(localPlayerId);
+                    if (localPlayer) {
+                        localPlayer.colorIndex = playerColorIndex;
+                        localPlayer.color = PLAYER_COLORS[playerColorIndex % PLAYER_COLORS.length];
+                    }
+                    
+                    // Add other players
+                    data.players.forEach(pData => {
+                        if (!players.has(pData.id)) {
+                            const p = new Player(pData.id, pData.name, pData.colorIndex);
+                            p.fromData(pData);
+                            players.set(pData.id, p);
+                        }
+                    });
+                    updateWaitingRoom();
+                    updateConnectionStatus('Joined room successfully');
+                    break;
+
+                case 'join-request':
+                    if (isHost) {
+                        console.log('Player join request:', data.player.name);
+                        const p = new Player(data.player.id, data.player.name, playerColorIndex++);
+                        p.fromData(data.player);
+                        p.colorIndex = playerColorIndex - 1;
+                        p.color = PLAYER_COLORS[p.colorIndex % PLAYER_COLORS.length];
+                        players.set(p.id, p);
+                        updateWaitingRoom();
+                        
+                        // Broadcast to all other players
+                        broadcast({type: 'player-joined', player: p.toData()}, conn.peer);
+                        
+                        // Send updated player list to the new player
+                        const playersData = Array.from(players.values()).map(pl => pl.toData());
+                        conn.send({
+                            type: 'update-players',
+                            players: playersData
+                        });
+                    }
+                    break;
+
+                case 'player-joined':
+                    console.log('New player joined:', data.player.name);
+                    if (!players.has(data.player.id)) {
+                        const p = new Player(data.player.id, data.player.name, data.player.colorIndex);
+                        p.fromData(data.player);
+                        players.set(p.id, p);
+                        updateWaitingRoom();
+                    }
+                    break;
+
+                case 'update-players':
+                    // Update the full player list (sent to new joiners)
                     data.players.forEach(pData => {
                         if (!players.has(pData.id)) {
                             const p = new Player(pData.id, pData.name, pData.colorIndex);
@@ -1210,25 +1322,6 @@
                     updateWaitingRoom();
                     break;
 
-                case 'join-request':
-                    if (isHost) {
-                        const p = new Player(data.player.id, data.player.name, playerColorIndex++);
-                        p.fromData(data.player);
-                        players.set(p.id, p);
-                        updateWaitingRoom();
-                        broadcast({type: 'player-joined', player: p.toData()});
-                    }
-                    break;
-
-                case 'player-joined':
-                    if (!players.has(data.player.id)) {
-                        const p = new Player(data.player.id, data.player.name, data.player.colorIndex);
-                        p.fromData(data.player);
-                        players.set(p.id, p);
-                        updateWaitingRoom();
-                    }
-                    break;
-
                 case 'player-update':
                     if (players.has(data.playerId) && data.playerId !== localPlayerId) {
                         players.get(data.playerId).fromData(data.playerData);
@@ -1236,6 +1329,7 @@
                     break;
 
                 case 'start-race':
+                    console.log('Race starting!');
                     startRace();
                     break;
 
@@ -1258,16 +1352,30 @@
             }
         }
 
-        function broadcast(data) {
-            connections.forEach(conn => {
-                if (conn.open) conn.send(data);
+        function broadcast(data, excludePeerId = null) {
+            connections.forEach((conn, peerId) => {
+                if (conn.open && peerId !== excludePeerId) {
+                    try {
+                        conn.send(data);
+                    } catch (err) {
+                        console.error('Failed to send to', peerId, ':', err);
+                    }
+                }
             });
+        }
+
+        function updateConnectionStatus(msg, isError = false) {
+            const el = document.getElementById('connection-status');
+            if (el) {
+                el.textContent = msg;
+                el.style.color = isError ? '#f00' : '#0a0';
+            }
         }
 
         function showStatus(msg, isError = false) {
             const el = document.getElementById('status-message');
             el.textContent = msg;
-            el.style.color = isError ? '#f00' : '#0f0';
+            el.className = 'status-message' + (isError ? ' error' : '');
         }
 
         // ============================================
@@ -1278,7 +1386,7 @@
                 showStatus('Creating room...');
                 await initPeer();
                 
-                roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+                roomCode = generateRoomCode();
                 isHost = true;
                 playerColorIndex = 1;
                 
@@ -1286,41 +1394,82 @@
                 players.set(localPlayerId, localPlayer);
                 
                 showScreen('waiting-room');
+                document.getElementById('display-room-code').textContent = roomCode;
                 updateWaitingRoom();
+                generateQRCode(roomCode);
                 showStatus('');
+                
+                // Store room code mapping in sessionStorage
+                sessionStorage.setItem(`room_${roomCode}`, myPeerId);
+                
+                console.log('Room created:', roomCode, 'Host Peer ID:', myPeerId);
             } catch (err) {
-                showStatus('Failed to create room', true);
+                showStatus('Failed to create room: ' + err.message, true);
+                console.error('Create room error:', err);
             }
         }
 
         async function joinRoom() {
             try {
-                const code = document.getElementById('room-code').value.trim();
-                if (!code || code.length !== 4) {
-                    showStatus('Enter a 4-digit room code', true);
+                const code = document.getElementById('room-code').value.trim().toUpperCase();
+                if (!code || code.length < 4) {
+                    showStatus('Enter a valid room code', true);
                     return;
                 }
                 
-                showStatus('Connecting...');
+                showStatus('Connecting to room...');
                 await initPeer();
                 
+                // Try to get host peer ID from sessionStorage
+                let hostPeerId = sessionStorage.getItem(`room_${code}`);
+                
+                if (!hostPeerId) {
+                    // For demo/testing: if code looks like a peer ID, use it directly
+                    if (code.length > 10) {
+                        hostPeerId = code;
+                    } else {
+                        showStatus('Room not found. Ask host to share their connection link!', true);
+                        return;
+                    }
+                }
+                
                 isHost = false;
+                roomCode = code;
                 const localPlayer = new Player(localPlayerId, playerName, 0);
                 players.set(localPlayerId, localPlayer);
                 
-                showStatus('Room codes are peer IDs in this demo. Host must share their peer ID.');
+                // Connect to host
+                console.log('Attempting to connect to host:', hostPeerId);
+                const conn = peer.connect(hostPeerId, {
+                    reliable: true,
+                    serialization: 'json'
+                });
+                
+                setupConnection(conn);
+                
                 showScreen('waiting-room');
+                document.getElementById('display-room-code').textContent = roomCode;
                 updateWaitingRoom();
                 showStatus('');
+                
+                // Add timeout for connection
+                setTimeout(() => {
+                    if (!conn.open) {
+                        showStatus('Connection timeout. Check room code and try again.', true);
+                        console.error('Connection timeout');
+                    }
+                }, 10000);
+                
             } catch (err) {
-                showStatus('Failed to join room', true);
+                showStatus('Failed to join room: ' + err.message, true);
+                console.error('Join room error:', err);
             }
         }
 
         function updateWaitingRoom() {
-            document.getElementById('display-room-code').textContent = myPeerId || roomCode;
             const list = document.getElementById('players-list');
             list.innerHTML = '';
+            
             players.forEach(p => {
                 const li = document.createElement('li');
                 li.textContent = p.name + (p.id === localPlayerId ? ' (You)' : '');
@@ -1331,6 +1480,8 @@
             if (isHost && players.size >= 1) {
                 document.getElementById('start-race').style.display = 'block';
             }
+            
+            console.log('Waiting room updated. Players:', players.size);
         }
 
         // ============================================
@@ -1366,7 +1517,7 @@
         }
 
         // ============================================
-        // QUESTION SYSTEM - ONLY 6 QUESTIONS, FAR APART
+        // QUESTION SYSTEM
         // ============================================
         function initQuestions() {
             let filtered = [...questionBank];
@@ -1378,9 +1529,7 @@
             }
             
             questions = [];
-            const num = Math.min(6, filtered.length);  // Only 6 questions on massive track!
-            
-            // Space questions EXTREMELY far apart
+            const num = Math.min(6, filtered.length);
             const spacing = Math.floor(track.length / num);
             
             for (let i = 0; i < num; i++) {
@@ -1398,8 +1547,7 @@
                     collected: false
                 });
             }
-            
-            console.log(`Placed ${questions.length} questions VERY far apart on the massive track!`);
+            console.log('Questions placed:', questions.length);
         }
 
         function showQuestion(q) {
@@ -1575,7 +1723,6 @@
                 }
             });
 
-            // Question collection - only if questions are placed!
             if (questionsPlaced) {
                 questions.forEach(q => {
                     if (!q.collected && distance(localPlayer, q) < 70) {
@@ -1601,19 +1748,18 @@
                 }
             }
 
-            broadcast({
-                type: 'player-update',
-                playerId: localPlayerId,
-                playerData: localPlayer.toData()
-            });
+            // Send updates to other players
+            if (connections.size > 0) {
+                broadcast({
+                    type: 'player-update',
+                    playerId: localPlayerId,
+                    playerData: localPlayer.toData()
+                });
+            }
 
-            // Position camera at driver's seat (forward of car center)
-            const forwardX = localPlayer.x + Math.cos(localPlayer.angle) * CAMERA_FORWARD;
-            const forwardY = localPlayer.y + Math.sin(localPlayer.angle) * CAMERA_FORWARD;
-            cameraX += (forwardX - cameraX) * CAMERA_SMOOTHING;
-            cameraY += (forwardY - cameraY) * CAMERA_SMOOTHING;
+            cameraX += (localPlayer.x - cameraX) * CAMERA_SMOOTHING;
+            cameraY += (localPlayer.y - cameraY) * CAMERA_SMOOTHING;
 
-            // Smoothly rotate camera to face the car but offset by 90 degrees (so car faces forward)
             function normalize(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
             const desiredAngle = normalize(localPlayer.angle + Math.PI / 2);
             const diff = normalize(desiredAngle - cameraAngle);
@@ -1706,13 +1852,12 @@
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Draw arrows at detected track crossings so players can see overlap points
+            // Track crossings
             if (trackCrossings && trackCrossings.length) {
                 trackCrossings.forEach(c => {
                     ctx.save();
                     ctx.translate(c.x, c.y);
                     ctx.rotate(c.angle);
-                    // main forward arrow
                     ctx.fillStyle = 'rgba(0,255,0,0.95)';
                     ctx.beginPath();
                     ctx.moveTo(0, -10);
@@ -1720,7 +1865,6 @@
                     ctx.lineTo(0, 8);
                     ctx.closePath();
                     ctx.fill();
-                    // faint opposite arrow to indicate crossing both ways
                     ctx.rotate(Math.PI);
                     ctx.globalAlpha = 0.5;
                     ctx.beginPath();
@@ -1754,7 +1898,7 @@
             });
             ctx.globalAlpha = 1;
 
-            // Questions - only render if placed!
+            // Questions
             if (questionsPlaced) {
                 questions.forEach(q => {
                     if (!q.collected) {
@@ -1902,10 +2046,10 @@
 
         function startRace() {
             if (isHost) {
+                console.log('Host starting race, broadcasting to all players');
                 broadcast({type: 'start-race'});
             }
             
-            // RESET - No questions at start!
             questionsPlaced = false;
             questions = [];
             
@@ -2040,6 +2184,10 @@
 
         document.getElementById('create-room').addEventListener('click', () => {
             playerName = document.getElementById('player-name').value.trim() || 'Racer';
+            if (!playerName) {
+                showStatus('Please enter your name', true);
+                return;
+            }
             localStorage.setItem('playerName', playerName);
             selectedCategory = document.getElementById('category-select').value;
             selectedDifficulty = document.getElementById('difficulty-select').value;
@@ -2048,16 +2196,30 @@
 
         document.getElementById('join-room').addEventListener('click', () => {
             playerName = document.getElementById('player-name').value.trim() || 'Racer';
+            if (!playerName) {
+                showStatus('Please enter your name', true);
+                return;
+            }
             localStorage.setItem('playerName', playerName);
             selectedCategory = document.getElementById('category-select').value;
             selectedDifficulty = document.getElementById('difficulty-select').value;
             joinRoom();
         });
 
-        document.getElementById('start-race').addEventListener('click', startRace);
+        document.getElementById('start-race').addEventListener('click', () => {
+            if (players.size < 1) {
+                showStatus('Need at least 1 player to start', true);
+                return;
+            }
+            startRace();
+        });
+
+        document.getElementById('copy-link-btn').addEventListener('click', copyRoomLink);
 
         document.getElementById('leave-room').addEventListener('click', () => {
-            if (peer) peer.destroy();
+            if (peer && !peer.destroyed) {
+                peer.destroy();
+            }
             connections.clear();
             players.clear();
             questionsPlaced = false;
@@ -2070,7 +2232,9 @@
         });
 
         document.getElementById('back-to-menu').addEventListener('click', () => {
-            if (peer) peer.destroy();
+            if (peer && !peer.destroyed) {
+                peer.destroy();
+            }
             connections.clear();
             players.clear();
             questionsPlaced = false;
@@ -2078,7 +2242,14 @@
             showScreen('lobby');
         });
 
+        // Make room code input uppercase
+        document.getElementById('room-code').addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+
         document.getElementById('player-name').value = playerName;
+        
+        console.log('Game initialized - ready to play!');
     </script>
 </body>
 </html>
