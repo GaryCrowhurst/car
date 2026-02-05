@@ -39,7 +39,7 @@
             image-rendering: pixelated;
         }
         
-        /* Screens */
+        /* Screens - Mobile Optimized */
         .screen {
             display: none;
             position: absolute;
@@ -49,34 +49,39 @@
             height: 100%;
             background: linear-gradient(135deg, #000000 0%, #0f0f0f 50%, #1a1a1a 100%);
             color: #0f0;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
             flex-direction: column;
             z-index: 100;
-            padding: 20px;
+            padding: 20px 15px;
             overflow-y: auto;
+            padding-bottom: 100px; /* Space for controls */
         }
         .screen.active {
             display: flex;
         }
         .screen h1 {
-            font-size: 2.5em;
-            margin-bottom: 30px;
+            font-size: 2em;
+            margin-bottom: 20px;
+            margin-top: 20px;
             text-shadow: 0 0 20px #0f0, 0 0 40px #0f0;
             color: #0f0;
+            text-align: center;
         }
         .screen h2 {
             color: #0f0;
             text-shadow: 0 0 10px #0f0;
+            font-size: 1.3em;
+            text-align: center;
         }
         input, button, select {
-            margin: 8px;
-            padding: 15px 25px;
-            font-size: 16px;
+            margin: 6px;
+            padding: 12px 20px;
+            font-size: 15px;
             border: 2px solid #0f0;
-            border-radius: 12px;
+            border-radius: 10px;
             font-weight: bold;
-            min-width: 200px;
+            min-width: 180px;
             max-width: 90%;
             background: #000;
             color: #0f0;
@@ -163,14 +168,14 @@
             font-size: 14px;
         }
         
-        /* Race HUD */
+        /* Race HUD - Mobile Optimized */
         #race-hud {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            padding: 10px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+            padding: 8px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 80%, transparent 100%);
             z-index: 10;
             pointer-events: none;
         }
@@ -179,66 +184,69 @@
             justify-content: space-between;
             align-items: center;
             color: #0f0;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             text-shadow: 0 0 10px #0f0;
+            gap: 4px;
         }
         .hud-stat {
             display: flex;
             flex-direction: column;
             align-items: center;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             border: 2px solid #0f0;
-            padding: 8px 15px;
-            border-radius: 10px;
-            min-width: 80px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            min-width: 65px;
+            flex: 1;
         }
         .hud-label {
-            font-size: 12px;
+            font-size: 10px;
             color: #0a0;
             margin-bottom: 2px;
         }
         .hud-value {
-            font-size: 24px;
+            font-size: 20px;
             color: #0f0;
             text-shadow: 0 0 10px #0f0;
         }
         #speed-display {
-            font-size: 32px;
+            font-size: 26px;
             color: #0f0;
         }
         
-        /* Scoreboard */
+        /* Scoreboard - Mobile Optimized */
         #scoreboard {
             position: absolute;
-            top: 80px;
-            left: 10px;
-            background: rgba(0,0,0,0.9);
-            border: 3px solid #0f0;
-            border-radius: 10px;
-            padding: 15px;
-            min-width: 200px;
+            top: 60px;
+            left: 5px;
+            background: rgba(0,0,0,0.95);
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            padding: 10px;
+            min-width: 140px;
+            max-width: 180px;
             z-index: 10;
             box-shadow: 0 0 20px rgba(0,255,0,0.5);
         }
         #scoreboard h3 {
             color: #0f0;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             text-align: center;
-            font-size: 16px;
+            font-size: 12px;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
         .scoreboard-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 10px;
-            margin: 5px 0;
+            padding: 5px 8px;
+            margin: 3px 0;
             background: rgba(0,255,0,0.1);
-            border-radius: 5px;
+            border-radius: 4px;
             border-left: 3px solid;
-            font-size: 14px;
+            font-size: 11px;
         }
         .scoreboard-row.you {
             background: rgba(0,255,0,0.3);
@@ -246,36 +254,40 @@
         }
         .scoreboard-position {
             font-weight: bold;
-            margin-right: 8px;
-            min-width: 25px;
+            margin-right: 5px;
+            min-width: 20px;
+            font-size: 10px;
         }
         .scoreboard-name {
             flex: 1;
             color: #0f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .scoreboard-lap {
             color: #0a0;
-            font-size: 12px;
-            margin-left: 10px;
+            font-size: 10px;
+            margin-left: 5px;
         }
         
-        /* Minimap */
+        /* Minimap - Mobile Optimized */
         #minimap {
             position: absolute;
-            top: 80px;
-            right: 10px;
-            width: 180px;
-            height: 180px;
-            background: rgba(0,0,0,0.9);
-            border: 3px solid #0f0;
-            border-radius: 10px;
+            top: 60px;
+            right: 5px;
+            width: 140px;
+            height: 140px;
+            background: rgba(0,0,0,0.95);
+            border: 2px solid #0f0;
+            border-radius: 8px;
             z-index: 10;
             box-shadow: 0 0 20px rgba(0,255,0,0.5);
         }
         
-        /* Question Popup */
+        /* Question Popup - Mobile Optimized */
         #question-popup {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -283,10 +295,10 @@
             border: 3px solid #0f0;
             box-shadow: 0 0 40px rgba(0,255,0,0.8);
             color: #0f0;
-            padding: 25px;
-            border-radius: 20px;
-            max-width: 90vw;
-            max-height: 85vh;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 95vw;
+            max-height: 90vh;
             overflow-y: auto;
             z-index: 50;
         }
@@ -295,29 +307,29 @@
         }
         .question-header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .category-badge {
             display: inline-block;
-            padding: 5px 15px;
+            padding: 4px 12px;
             background: rgba(0,255,0,0.2);
             border: 1px solid #0f0;
-            border-radius: 20px;
-            font-size: 12px;
-            margin-bottom: 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            margin-bottom: 8px;
         }
         #question-text {
-            font-size: 18px;
-            line-height: 1.6;
-            margin-bottom: 15px;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 12px;
             text-align: left;
         }
         #timer {
-            font-size: 48px;
+            font-size: 42px;
             text-align: center;
             color: #0f0;
             text-shadow: 0 0 20px #0f0;
-            margin: 15px 0;
+            margin: 12px 0;
         }
         #timer.warning {
             color: #f00;
@@ -331,17 +343,18 @@
         .options {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 15px;
+            gap: 10px;
+            margin-top: 12px;
         }
         .option-btn {
-            padding: 15px;
-            font-size: 16px;
+            padding: 12px;
+            font-size: 15px;
             background: #000;
             color: #0f0;
             border: 2px solid #0f0;
             text-align: left;
             transition: all 0.2s;
+            border-radius: 8px;
         }
         .option-btn:active {
             transform: scale(0.98);
@@ -373,66 +386,89 @@
             line-height: 1.5;
         }
         
-        /* Mobile Controls */
+        /* Mobile Controls - ALWAYS VISIBLE */
         #controls {
-            position: absolute;
+            position: fixed;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 220px;
+            height: 280px;
             z-index: 20;
             pointer-events: none;
+            display: block !important; /* ALWAYS VISIBLE */
         }
         .control-btn {
             position: absolute;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 18px;
+            font-size: 22px;
             font-weight: bold;
             color: #0f0;
             border-radius: 50%;
             pointer-events: auto;
             user-select: none;
-            box-shadow: 0 0 20px rgba(0,255,0,0.5);
-            border: 4px solid #0f0;
-            background: rgba(0,0,0,0.8);
+            box-shadow: 0 0 30px rgba(0,255,0,0.7);
+            border: 5px solid #0f0;
+            background: rgba(0,0,0,0.9);
             transition: transform 0.1s;
         }
         .control-btn:active {
-            transform: scale(0.9);
+            transform: scale(0.85);
         }
         #steer-left {
-            bottom: 20px;
+            bottom: 30px;
             left: 20px;
-            width: 90px;
-            height: 90px;
-        }
-        #steer-right {
-            bottom: 20px;
-            left: 120px;
-            width: 90px;
-            height: 90px;
-        }
-        #accelerate {
-            bottom: 40px;
-            right: 20px;
             width: 110px;
             height: 110px;
-            font-size: 24px;
+        }
+        #steer-right {
+            bottom: 30px;
+            left: 145px;
+            width: 110px;
+            height: 110px;
+        }
+        #accelerate {
+            bottom: 50px;
+            right: 20px;
+            width: 130px;
+            height: 130px;
+            font-size: 28px;
+            box-shadow: 0 0 40px rgba(0,255,0,0.9);
         }
         #brake {
-            bottom: 130px;
-            right: 40px;
-            width: 70px;
-            height: 70px;
-            font-size: 16px;
+            bottom: 160px;
+            right: 45px;
+            width: 80px;
+            height: 80px;
+            font-size: 18px;
         }
         .control-btn.active {
-            transform: scale(0.85);
+            transform: scale(0.75);
             background: #0f0;
             color: #000;
-            box-shadow: 0 0 40px rgba(0,255,0,1);
+            box-shadow: 0 0 50px rgba(0,255,0,1);
+        }
+        
+        /* Desktop controls hint */
+        .desktop-controls-hint {
+            position: absolute;
+            bottom: 300px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #0f0;
+            color: #0f0;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 25;
+            display: none;
+        }
+        @media (min-width: 768px) {
+            .desktop-controls-hint {
+                display: block;
+            }
         }
         
         /* Effects */
@@ -529,20 +565,21 @@
 
         .instruction {
             position: absolute;
-            bottom: 240px;
+            bottom: 320px; /* Moved up from 240px to avoid controls */
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0,0,0,0.95);
             border: 3px solid #0f0;
             color: #0f0;
-            padding: 20px 30px;
+            padding: 15px 25px;
             border-radius: 15px;
-            font-size: 18px;
+            font-size: 16px;
             text-align: center;
             z-index: 25;
             animation: float 2s ease-in-out infinite;
             box-shadow: 0 0 30px rgba(0,255,0,0.7);
             font-weight: bold;
+            max-width: 80%;
         }
         @keyframes float {
             0%, 100% { transform: translateX(-50%) translateY(0); }
@@ -699,13 +736,16 @@
             <div id="explanation"></div>
         </div>
         
-        <!-- Mobile Controls -->
-        <div id="controls" style="display: none;">
+        <!-- Mobile Controls - ALWAYS VISIBLE -->
+        <div id="controls">
             <div class="control-btn" id="steer-left">◀</div>
             <div class="control-btn" id="steer-right">▶</div>
             <div class="control-btn" id="brake">BRAKE</div>
             <div class="control-btn" id="accelerate">GO!</div>
         </div>
+
+        <!-- Desktop hint -->
+        <div class="desktop-controls-hint">🎮 Use Arrow Keys or WASD to drive</div>
 
         <!-- Instruction -->
         <div class="instruction hidden" id="instruction">
@@ -726,23 +766,23 @@
         const CAR_LENGTH = 40;
         const CAR_WIDTH = 20;
         const TRACK_WIDTH = 150;
-        const MAX_SPEED = 4.5;
-        const ACCELERATION = 0.08;
-        const BRAKE_POWER = 0.25;
-        const FRICTION = 0.05;
-        const TURN_SPEED = 0.065;
-        const DRIFT = 0.94;
-        const BOOST_MULT = 2.5;
-        const SLOW_MULT = 0.5;
+        const MAX_SPEED = 2.5;     // REDUCED from 4.5 - much more controllable
+        const ACCELERATION = 0.05; // REDUCED from 0.08 - smoother acceleration
+        const BRAKE_POWER = 0.2;   // REDUCED from 0.25 - gentler braking
+        const FRICTION = 0.04;     // REDUCED from 0.05 - less friction
+        const TURN_SPEED = 0.055;  // REDUCED from 0.065 - easier to control
+        const DRIFT = 0.95;        // INCREASED from 0.94 - less slidey
+        const BOOST_MULT = 2.0;    // REDUCED from 2.5 - less crazy boost
+        const SLOW_MULT = 0.6;     // INCREASED from 0.5 - less harsh penalty
         const BOOST_TIME = 450;
         const SLOW_TIME = 180;
         const QUESTION_TIME = 1200;
         const CAMERA_SMOOTHING = 0.15;
-        const ZOOM = 1.4;
+        const ZOOM = 1.6;          // INCREASED from 1.4 - closer view
         const CAMERA_Y_OFFSET = 140;
         const COLLISION_RADIUS = 35;
-        const CRASH_SPEED_LOSS = 0.5;
-        const CRASH_STUN_TIME = 40;
+        const CRASH_SPEED_LOSS = 0.6;  // REDUCED from 0.5 - less harsh
+        const CRASH_STUN_TIME = 30;    // REDUCED from 40 - shorter stun
 
         const PLAYER_COLORS = [
             '#00ff00', '#00ffff', '#ff00ff', '#ffff00',
@@ -772,8 +812,8 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            minimapCanvas.width = 180;
-            minimapCanvas.height = 180;
+            minimapCanvas.width = 140;
+            minimapCanvas.height = 140;
         }
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
@@ -1768,7 +1808,7 @@
             const diff = normalize(desiredAngle - cameraAngle);
             cameraAngle = normalize(cameraAngle + diff * CAMERA_SMOOTHING);
 
-            document.getElementById('speed-display').textContent = Math.round(localPlayer.speed * 25);
+            document.getElementById('speed-display').textContent = Math.round(localPlayer.speed * 45); // Adjusted for slower speed
             document.getElementById('lap-display').textContent = `${Math.min(localPlayer.lap + 1, 3)}/3`;
             document.getElementById('correct-display').textContent = localPlayer.questionsCorrect;
             document.getElementById('pos-display').textContent = getPosition(localPlayer);
@@ -1966,15 +2006,15 @@
         }
 
         function renderMinimap() {
-            const scale = 0.028;
-            const cx = 90;
-            const cy = 90;
+            const scale = 0.022; // Adjusted for smaller minimap
+            const cx = 70;
+            const cy = 70;
             
             minimapCtx.fillStyle = '#000';
-            minimapCtx.fillRect(0, 0, 180, 180);
+            minimapCtx.fillRect(0, 0, 140, 140);
             
             minimapCtx.strokeStyle = '#0f0';
-            minimapCtx.lineWidth = 10;
+            minimapCtx.lineWidth = 8;
             minimapCtx.beginPath();
             minimapCtx.moveTo(cx + (track[0].x - GAME_WIDTH/2) * scale, cy + (track[0].y - GAME_HEIGHT/2) * scale);
             track.forEach(p => {
@@ -1991,7 +2031,7 @@
                         minimapCtx.arc(
                             cx + (q.x - GAME_WIDTH/2) * scale,
                             cy + (q.y - GAME_HEIGHT/2) * scale,
-                            5, 0, Math.PI * 2
+                            4, 0, Math.PI * 2
                         );
                         minimapCtx.fill();
                     }
@@ -2004,7 +2044,7 @@
                 minimapCtx.arc(
                     cx + (p.x - GAME_WIDTH/2) * scale,
                     cy + (p.y - GAME_HEIGHT/2) * scale,
-                    7, 0, Math.PI * 2
+                    5, 0, Math.PI * 2
                 );
                 minimapCtx.fill();
             });
@@ -2093,7 +2133,7 @@
                     startTime = Date.now();
                     document.getElementById('race-hud').style.display = 'block';
                     document.getElementById('scoreboard').style.display = 'block';
-                    document.getElementById('controls').style.display = 'block';
+                    // Controls are always visible
                     showInstruction('🏁 LAP 1: Just race! Questions unlock after lap 1!', 5000);
                     gameLoop();
                 }
@@ -2104,7 +2144,7 @@
             raceStarted = false;
             document.getElementById('race-hud').style.display = 'none';
             document.getElementById('scoreboard').style.display = 'none';
-            document.getElementById('controls').style.display = 'none';
+            // Controls stay visible
             
             const sorted = Array.from(players.values()).sort((a, b) => {
                 if (a.finished && b.finished) return a.finishTime - b.finishTime;
